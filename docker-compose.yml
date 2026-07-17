@@ -1,0 +1,163 @@
+version: "3.9"
+
+# VERITAS - Verified Evidence Reasoning & Intelligence Triage Agentic System
+# Fully local / air-gapped-capable stack. All data persists via bind-mounted
+# volumes under ./data — safe across `docker-compose down` and restarts.
+
+services:
+
+  # ---------------------------------------------------------------------
+  # Graph database — stores entities, relationships, correlation results
+  # ---------------------------------------------------------------------
+  neo4j:
+    image: neo4j:5-community
+    container_name: veritas-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-changeme_in_env}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_memory_heap_max__size: 2G
+    ports:
+      - "7474:7474"   # browser UI
+      - "7687:7687"   # bolt protocol
+    volumes:
+      - ./data/neo4j/data:/data
+      - ./data/neo4j/logs:/logs
+      - ./data/neo4j/import:/var/lib/neo4j/import
+    healthcheck:
+      test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------
+  # Relational DB — investigator accounts, roles, audit log, case metadata
+  # ---------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: veritas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: veritas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_env}
+      POSTGRES_DB: veritas
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veritas"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------
+  # Task queue broker + Celery result backend
+  # ---------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: veritas-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------
+  # Local LLM runtime — Qwen2.5 7B, fully offline reasoning
+  # ---------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: veritas-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./data/ollama:/root/.ollama
+    # NOTE: after first `docker-compose up`, run:
+    #   docker exec -it veritas-ollama ollama pull qwen2.5:7b
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+      # ^ remove this `deploy` block entirely if no GPU is available on host
+
+  # ---------------------------------------------------------------------
+  # FastAPI application — API layer + LangGraph orchestration entrypoint
+  # ---------------------------------------------------------------------
+  api:
+    build: ./backend
+    container_name: veritas-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://veritas:${POSTGRES_PASSWORD:-changeme_in_env}@postgres:5432/veritas
+      OLLAMA_HOST: http://ollama:11434
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/evidence_storage:/app/evidence_storage
+      - ./backend/app:/app/app   # live-reload during dev; drop in prod
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ---------------------------------------------------------------------
+  # Celery workers — run the 9-agent pipeline tasks in parallel
+  # ---------------------------------------------------------------------
+  worker:
+    build: ./backend
+    container_name: veritas-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://veritas:${POSTGRES_PASSWORD:-changeme_in_env}@postgres:5432/veritas
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ./data/evidence_storage:/app/evidence_storage
+      - ./backend/app:/app/app
+    depends_on:
+      - api
+      - redis
+      - neo4j
+    # Scale this at deploy time based on evidence volume, e.g.:
+    #   docker-compose up --scale worker=4
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+
+  # ---------------------------------------------------------------------
+  # Flower — optional web UI to monitor Celery task queue in real time
+  # ---------------------------------------------------------------------
+  flower:
+    build: ./backend
+    container_name: veritas-flower
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    command: celery -A app.celery_app flower --port=5555
+
+networks:
+  default:
+    name: veritas-net

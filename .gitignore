@@ -1,0 +1,46 @@
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Persisted data volumes — never commit evidence or database contents
+data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# ML weights (too large / sensitive for git — distribute separately)
+backend/app/ml/weights/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Linting / type checking
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (local overrides — never commit real overrides)
+docker-compose.override.yml

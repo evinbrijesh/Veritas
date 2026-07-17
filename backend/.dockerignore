@@ -1,0 +1,36 @@
+# Version control
+.git
+.gitignore
+
+# Environment (never bake secrets into images)
+.env
+.env.local
+.env.*.local
+
+# Persisted data (bind-mounted at runtime, not build time)
+../data/
+
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+
+# ML weights (too large for image, mounted at runtime)
+app/ml/weights/
+
+# Dev / IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in runtime image)
+../docs/
+../README.md
+../LICENSE
