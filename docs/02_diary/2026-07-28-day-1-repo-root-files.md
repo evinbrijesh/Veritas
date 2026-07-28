@@ -98,6 +98,26 @@ Filenames like `docker-compose.yml` and `docker-compose.override.yml` were left 
 
 ### 8. Created this diary entry
 
+### 9. Committed Day 1 changes manually
+
+User ran their own `git add` + `git commit` to package all Day 1 changes:
+- Modified files (`.env.example`, `.gitignore`, `README.md`, `docker-compose.yml`)
+- Deleted files (`docs/env.example`, all old `backend/` scaffold files)
+- New files (`docs/01_roadmap/`, `docs/02_diary/`)
+
+Commit: `98e9e71 Day 1: repo root files, .env setup, infra validation`
+
+### 10. Discussed `.editorconfig` and `data/` git tracking
+
+- **`.editorconfig`** — explained as a universal editor-formatting contract. Already well-configured for the project; no changes needed.
+- **`data/` in git** — clarified that `data/` is gitignored by design (evidence/DBs don't belong in repo). Docker auto-creates the folders on first `docker compose up`. No placeholder folder in git is needed.
+
+### 11. Created `docs/data_layout.md`
+
+A dedicated reference explaining the `data/` folder structure and why it's not tracked in git. Useful for other investigators who clone the repo and wonder where the folders come from.
+
+Commit: `782985f docs: add data_layout.md explaining data/ folder structure`
+
 ---
 
 ## Key decisions made today
@@ -125,13 +145,22 @@ veritas/
 │   ├── neo4j/
 │   ├── postgres/
 │   └── redis/
-├── backend/            ← created Day 2+
+├── backend/            ← Day 2+
 └── docs/
     ├── 01_roadmap/
     ├── 02_diary/       ← this file lives here
+    ├── data_layout.md  ← NEW — explains data/ folder structure
     ├── DATA_MODEL.md
     ├── PRD.md
     └── STACK.md
+```
+
+## Git log at end of Day 1
+
+```
+782985f docs: add data_layout.md explaining data/ folder structure
+98e9e71 Day 1: repo root files, .env setup, infra validation
+7319f90 Initial scaffold: VERITAS multi-agent forensic pipeline
 ```
 
 ## Next up — Day 2

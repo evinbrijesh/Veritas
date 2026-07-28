@@ -14,10 +14,10 @@ status: in-progress
 
 ### Day 1 — Repo root files
 **Create:**
-- [ ] `veritas/docker-compose.yml`
-- [ ] `veritas/.env.example`
-- [ ] `veritas/.gitignore`
-- [ ] `veritas/README.md`
+- [x] `veritas/docker-compose.yml`
+- [x] `veritas/.env.example`
+- [x] `veritas/.gitignore`
+- [x] `veritas/README.md`
 
 ```yaml
 # docker-compose.yml
