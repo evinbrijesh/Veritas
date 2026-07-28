@@ -1,0 +1,38 @@
+# --- Web framework ---
+fastapi              # the API framework — handles HTTP routes
+uvicorn[standard]    # runs the FastAPI server (like a mini web server)
+python-multipart     # needed to accept file uploads via HTTP
+pydantic-settings    # reads .env file into typed config objects
+
+# --- Task queue ---
+celery               # runs the 9-agent pipeline as background tasks
+redis                # connects to Redis (Celery's message broker)
+
+# --- Orchestration ---
+langgraph            # LangGraph — wires the 9 agents into a state graph
+langchain-core       # core types LangGraph depends on
+
+# --- Databases ---
+neo4j                # Python driver for Neo4j (evidence graph)
+sqlalchemy           # ORM for Postgres (investigators, cases, audit log)
+psycopg2-binary      # Postgres adapter that SQLAlchemy uses under the hood
+
+# --- Auth ---
+passlib[bcrypt]      # password hashing
+pyjwt                # creates and verifies JWT tokens
+
+# --- ML / synthetic detection ---
+torch                # PyTorch — runs the EfficientNet-B4 model
+torchvision          # image transforms (resize, normalize) for the model
+timm                 # gives us the EfficientNet-B4 architecture
+pillow               # loads images (JPEG, PNG, etc.)
+
+# --- Metadata extraction ---
+pymediainfo          # reads video metadata (codec, duration, timestamps)
+
+# --- LLM client ---
+requests             # talks to Ollama's HTTP API for LLM inference
+
+# --- Testing (dev only) ---
+pytest               # test runner
+httpx                # async HTTP client for testing API endpoints
