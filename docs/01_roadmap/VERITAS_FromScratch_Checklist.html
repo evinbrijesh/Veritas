@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERITAS — Build Log (From Scratch)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&family=Libre+Baskerville:ital@0;1&display=swap');
+
+  :root{
+    --paper: #ece3cd;
+    --paper-dark: #ddd0ac;
+    --paper-shadow: #c9b98a;
+    --ink: #2b2620;
+    --ink-soft: #5c5342;
+    --stamp-red: #a3312a;
+    --stamp-red-dim: #a3312a55;
+    --folder-tab: #d9b877;
+    --folder-tab-active: #e8c98a;
+    --check-green: #45633f;
+    --line: #b8a878;
+    --highlight: #f4e9c9;
+    --code-bg: #1e1b16;
+    --code-fg: #e8dcc0;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, #00000012, transparent 60%),
+      var(--paper);
+    background-attachment: fixed;
+    color:var(--ink);
+    font-family:'Libre Baskerville', Georgia, serif;
+    padding:0 0 60px 0;
+  }
+
+  header{
+    position:relative;
+    padding:38px 24px 26px;
+    text-align:center;
+    border-bottom:3px double var(--ink-soft);
+    background:var(--paper-dark);
+  }
+  header .case-no{
+    font-family:'Courier Prime', monospace;
+    font-size:12px;
+    letter-spacing:2px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+  }
+  header h1{
+    font-family:'Special Elite', 'Courier Prime', monospace;
+    font-size:clamp(26px,5vw,40px);
+    margin:8px 0 4px;
+    letter-spacing:1px;
+  }
+  header .subtitle{
+    font-family:'Courier Prime', monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+    letter-spacing:1px;
+  }
+  .stamp{
+    position:absolute; top:24px; right:28px;
+    border:3px solid var(--stamp-red); color:var(--stamp-red);
+    font-family:'Special Elite', monospace; font-size:14px;
+    padding:6px 14px; transform:rotate(-8deg); border-radius:6px;
+    letter-spacing:2px; opacity:0.85; background:#a3312a08;
+  }
+  .stamp.closed{ color:var(--check-green); border-color:var(--check-green); background:#45633f08; }
+
+  .status-bar{ max-width:920px; margin:22px auto 0; padding:0 24px; }
+  .status-bar .track{ height:14px; background:var(--paper-shadow); border:1px solid var(--ink-soft); border-radius:2px; overflow:hidden; }
+  .status-bar .fill{ height:100%; background:repeating-linear-gradient(45deg, var(--check-green), var(--check-green) 6px, #3d5738 6px, #3d5738 12px); width:0%; transition:width .4s ease; }
+  .status-bar .label{ font-family:'Courier Prime', monospace; font-size:12px; color:var(--ink-soft); margin-top:6px; display:flex; justify-content:space-between; }
+
+  main{ max-width:920px; margin:32px auto; padding:0 24px; position:relative; z-index:1; }
+
+  .week{ margin-bottom:22px; border:1px solid var(--line); background:var(--paper); box-shadow:2px 3px 0 var(--paper-shadow); }
+  .week-header{ display:flex; align-items:center; gap:14px; padding:14px 18px; cursor:pointer; background:var(--folder-tab); border-bottom:1px solid var(--line); user-select:none; }
+  .week-header:hover{ background:var(--folder-tab-active); }
+  .week-header .tab-num{ font-family:'Special Elite', monospace; font-size:20px; min-width:34px; }
+  .week-header .tab-title{ flex:1; font-family:'Courier Prime', monospace; font-weight:700; font-size:14px; letter-spacing:0.5px; text-transform:uppercase; }
+  .week-header .tab-goal{ display:block; font-family:'Libre Baskerville', serif; font-weight:400; font-style:italic; font-size:12px; text-transform:none; color:var(--ink-soft); margin-top:2px; }
+  .week-header .tab-progress{ font-family:'Courier Prime', monospace; font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+  .week-header .chevron{ font-size:14px; transition:transform .2s ease; color:var(--ink-soft); }
+  .week.open .chevron{ transform:rotate(90deg); }
+  .week-body{ display:none; padding:6px 18px 18px; }
+  .week.open .week-body{ display:block; }
+
+  .day{ margin-top:16px; padding-top:12px; border-top:1px dashed var(--line); }
+  .day:first-child{ border-top:none; }
+  .day-title{ font-family:'Courier Prime', monospace; font-size:13px; font-weight:700; color:var(--stamp-red); margin-bottom:8px; letter-spacing:0.5px; }
+
+  ul.filelist{ list-style:none; margin:0 0 8px 0; padding-left:2px; }
+  li.file{ margin-bottom:6px; line-height:1.4; }
+  label.file-row{ display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:14px; }
+
+  input[type=checkbox]{
+    appearance:none; -webkit-appearance:none; width:17px; height:17px; min-width:17px;
+    margin-top:2px; border:1.5px solid var(--ink-soft); background:var(--paper);
+    position:relative; cursor:pointer; border-radius:2px;
+  }
+  input[type=checkbox]:checked{ background:var(--check-green); border-color:var(--check-green); }
+  input[type=checkbox]:checked::after{ content:"✓"; position:absolute; top:-3px; left:2px; color:var(--highlight); font-size:13px; font-weight:bold; }
+
+  .file-path{
+    font-family:'Courier Prime', monospace; font-size:13px;
+    background:var(--paper-dark); border:1px solid var(--line);
+    padding:1px 6px; border-radius:3px;
+  }
+  .file-path.done{ text-decoration:line-through; color:var(--ink-soft); }
+
+  details.skeleton{ margin:6px 0 14px 27px; }
+  details.skeleton summary{
+    font-family:'Courier Prime', monospace; font-size:11.5px; color:var(--ink-soft);
+    cursor:pointer; letter-spacing:0.5px; padding:3px 0;
+  }
+  details.skeleton summary:hover{ color:var(--stamp-red); }
+  details.skeleton pre{
+    background:var(--code-bg); color:var(--code-fg);
+    font-family:'Courier Prime', monospace; font-size:12px; line-height:1.5;
+    padding:14px 16px; border-radius:4px; overflow-x:auto; margin:6px 0 0; white-space:pre;
+  }
+
+  .checkpoint{
+    margin-top:12px; padding:10px 12px; border:1px dashed var(--stamp-red-dim);
+    background:#a3312a0a; font-family:'Courier Prime', monospace; font-size:12.5px; color:var(--ink);
+  }
+  .checkpoint b{ color:var(--stamp-red); }
+
+  footer{ max-width:920px; margin:10px auto 0; padding:14px 24px 0; text-align:center; font-family:'Courier Prime', monospace; font-size:11.5px; color:var(--ink-soft); }
+  .reset-btn{ font-family:'Courier Prime', monospace; font-size:11px; background:none; border:1px solid var(--ink-soft); color:var(--ink-soft); padding:5px 10px; border-radius:3px; cursor:pointer; margin-top:10px; }
+  .reset-btn:hover{ background:var(--paper-shadow); }
+
+  @media (max-width:560px){
+    .week-header{ flex-wrap:wrap; }
+    .stamp{ position:static; display:inline-block; margin-top:12px; transform:rotate(-4deg); }
+    details.skeleton{ margin-left:10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="case-no">HAC'KP · CYBERDOME · ACPIA PROBLEM STATEMENT</div>
+  <h1>VERITAS — Build Log</h1>
+  <div class="subtitle">From-scratch build order · file by file · skeleton included</div>
+  <div class="stamp" id="stamp">IN PROGRESS</div>
+</header>
+
+<div class="status-bar">
+  <div class="track"><div class="fill" id="overallFill"></div></div>
+  <div class="label"><span id="overallText">0 / 0 files created</span><span id="overallPct">0%</span></div>
+</div>
+
+<main id="weeksContainer"></main>
+
+<footer>
+  Progress saves locally in this browser. Click a filename's "▸ show skeleton" to reveal the code structure — you write the logic inside it.
+  <br>
+  <button class="reset-btn" id="resetBtn">Reset all checkmarks</button>
+</footer>
+
+<script>
+const DATA = [
+{
+  title: "Week 1 — Project Skeleton & Infra",
+  goal: "Nothing runs until the stack itself exists.",
+  days: [
+    { title: "Day 1 — Repo root files", files: [
+        "veritas/docker-compose.yml", "veritas/.env.example", "veritas/.gitignore", "veritas/README.md"
+      ],
+      code: "# docker-compose.yml\nversion: \"3.9\"\nservices:\n  postgres:\n    image: postgres:16\n    environment:\n      POSTGRES_USER: ${POSTGRES_USER}\n      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}\n      POSTGRES_DB: ${POSTGRES_DB}\n    volumes: [\"./data/postgres:/var/lib/postgresql/data\"]\n    ports: [\"5432:5432\"]\n\n  redis:\n    image: redis:7\n    volumes: [\"./data/redis:/data\"]\n    ports: [\"6379:6379\"]\n\n  neo4j:\n    image: neo4j:5-community\n    environment:\n      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}\n    volumes: [\"./data/neo4j:/data\"]\n    ports: [\"7474:7474\", \"7687:7687\"]\n\n  ollama:\n    image: ollama/ollama\n    volumes: [\"./data/ollama:/root/.ollama\"]\n    ports: [\"11434:11434\"]\n\n  backend:\n    build: ./backend\n    env_file: .env\n    depends_on: [postgres, redis, neo4j, ollama]\n    volumes: [\"./data/evidence_storage:/evidence_storage\"]\n    ports: [\"8000:8000\"]\n    # TODO: command to run uvicorn app.main:app\n\n  celery:\n    build: ./backend\n    env_file: .env\n    depends_on: [redis, backend]\n    # TODO: command to run celery worker\n\n  flower:\n    build: ./backend\n    env_file: .env\n    depends_on: [redis, celery]\n    ports: [\"5555:5555\"]\n    # TODO: command to run flower\n\n# .env.example\nPOSTGRES_USER=\nPOSTGRES_PASSWORD=\nPOSTGRES_DB=veritas\nNEO4J_PASSWORD=\nJWT_SECRET_KEY=\nOLLAMA_HOST=http://ollama:11434\nSYNTHETIC_DETECTOR_MODEL_PATH=/models/efficientnet_b4_synthetic.pt" },
+
+    { title: "Day 2 — Backend build files", files: [
+        "veritas/backend/Dockerfile", "veritas/backend/requirements.txt"
+      ],
+      code: "# backend/Dockerfile\nFROM python:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\n# TODO: CMD to launch uvicorn (overridden per-service in compose)\n\n# backend/requirements.txt\nfastapi\nuvicorn[standard]\npydantic-settings\nsqlalchemy\npsycopg2-binary\nneo4j\ncelery\nredis\nlanggraph\nlangchain-core\npasslib[bcrypt]\npyjwt\npython-multipart\ntorch\ntorchvision\ntimm\npillow\nrequests\npymediainfo\npytest\nhttpx" },
+
+    { title: "Day 3 — App entrypoint + config", files: [
+        "veritas/backend/app/__init__.py (empty)", "veritas/backend/app/config.py", "veritas/backend/app/main.py"
+      ],
+      code: "# app/config.py\nfrom pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    postgres_user: str\n    postgres_password: str\n    postgres_db: str\n    neo4j_password: str\n    jwt_secret_key: str\n    ollama_host: str\n    synthetic_detector_model_path: str\n\n    class Config:\n        env_file = \".env\"\n\nsettings = Settings()\n\n\n# app/main.py\nfrom fastapi import FastAPI\n\napp = FastAPI(title=\"VERITAS\")\n\n# TODO: import and include routers once they exist\n# from app.auth.routes import router as auth_router\n# from app.api.routes_case import router as case_router\n# from app.api.routes_evidence import router as evidence_router\n# from app.api.routes_graph import router as graph_router\n# app.include_router(auth_router, prefix=\"/auth\")\n# app.include_router(case_router, prefix=\"/cases\")\n# app.include_router(evidence_router, prefix=\"/evidence\")\n# app.include_router(graph_router, prefix=\"/graph\")\n\n@app.get(\"/health\")\ndef health():\n    return {\"status\": \"ok\"}" },
+
+    { title: "Day 4 — Celery wiring", files: [
+        "veritas/backend/app/celery_app.py", "veritas/backend/app/tasks/__init__.py (empty)", "veritas/backend/app/tasks/celery_tasks.py"
+      ],
+      code: "# app/celery_app.py\nfrom celery import Celery\nfrom app.config import settings\n\ncelery_app = Celery(\n    \"veritas\",\n    broker=\"redis://redis:6379/0\",\n    backend=\"redis://redis:6379/1\",\n)\n# TODO: celery_app.conf updates (task routes, serialization, etc.)\n\n\n# app/tasks/celery_tasks.py\nfrom app.celery_app import celery_app\n\n@celery_app.task(bind=True)\ndef run_pipeline_task(self, case_id: str, evidence_path: str):\n    \"\"\"Async wrapper that kicks off the LangGraph pipeline for one evidence file.\"\"\"\n    # TODO: import orchestrator once it exists, invoke with initial PipelineState\n    raise NotImplementedError" },
+
+    { title: "Day 5 — DB session + backup script", files: [
+        "veritas/backend/app/db/__init__.py (empty)", "veritas/backend/app/db/session.py", "veritas/backend/scripts/backup_neo4j.sh"
+      ],
+      code: "# app/db/session.py\nfrom sqlalchemy import create_engine\nfrom sqlalchemy.orm import sessionmaker\nfrom app.config import settings\n\nDATABASE_URL = f\"postgresql://{settings.postgres_user}:{settings.postgres_password}@postgres:5432/{settings.postgres_db}\"\n\nengine = create_engine(DATABASE_URL)\nSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)\n\ndef get_db():\n    db = SessionLocal()\n    try:\n        yield db\n    finally:\n        db.close()\n\n\n#!/bin/bash\n# backend/scripts/backup_neo4j.sh\nset -e\nTIMESTAMP=$(date +%Y%m%d_%H%M%S)\nBACKUP_DIR=\"/data/backups\"\n# TODO: neo4j-admin dump command targeting $BACKUP_DIR/neo4j_$TIMESTAMP.dump\necho \"TODO: implement dump\"" }
+  ],
+  checkpoint: "Full docker compose up -d boots all 7 services clean. /health responds. Backup script runs (dump command can still be TODO)."
+},
+
+{
+  title: "Week 2 — Auth & Data Models",
+  goal: "Every table and route exists in skeleton form, role-gated from day one.",
+  days: [
+    { title: "Day 1 — Postgres models", files: ["veritas/backend/app/db/postgres_models.py"],
+      code: "# app/db/postgres_models.py\nfrom sqlalchemy import Column, String, DateTime, ForeignKey\nfrom sqlalchemy.orm import declarative_base\nimport uuid, datetime\n\nBase = declarative_base()\n\nclass Investigator(Base):\n    __tablename__ = \"investigators\"\n    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))\n    username = Column(String, unique=True, nullable=False)\n    password_hash = Column(String, nullable=False)\n    role = Column(String, nullable=False)  # analyst | supervisor | auditor | admin\n\nclass Case(Base):\n    __tablename__ = \"cases\"\n    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))\n    title = Column(String, nullable=False)\n    created_by = Column(String, ForeignKey(\"investigators.id\"))\n    status = Column(String, default=\"open\")\n    created_at = Column(DateTime, default=datetime.datetime.utcnow)\n\nclass AuditLog(Base):\n    __tablename__ = \"audit_log\"\n    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))\n    investigator_id = Column(String, ForeignKey(\"investigators.id\"))\n    action = Column(String, nullable=False)\n    target_reference = Column(String)\n    timestamp = Column(DateTime, default=datetime.datetime.utcnow)\n    # TODO: after table is created, revoke UPDATE/DELETE grants for the app DB role" },
+
+    { title: "Day 2 — Auth utils", files: ["veritas/backend/app/auth/__init__.py (empty)", "veritas/backend/app/auth/utils.py"],
+      code: "# app/auth/utils.py\nfrom passlib.context import CryptContext\nimport jwt\nfrom datetime import datetime, timedelta\nfrom app.config import settings\n\npwd_context = CryptContext(schemes=[\"bcrypt\"], deprecated=\"auto\")\n\ndef hash_password(password: str) -> str:\n    return pwd_context.hash(password)\n\ndef verify_password(password: str, password_hash: str) -> bool:\n    return pwd_context.verify(password, password_hash)\n\ndef create_access_token(investigator_id: str, role: str, expires_minutes: int = 60) -> str:\n    # TODO: payload with sub, role, exp — sign with settings.jwt_secret_key\n    raise NotImplementedError\n\ndef decode_access_token(token: str) -> dict:\n    # TODO: jwt.decode, handle ExpiredSignatureError / InvalidTokenError\n    raise NotImplementedError" },
+
+    { title: "Day 3 — Auth routes", files: ["veritas/backend/app/auth/routes.py"],
+      code: "# app/auth/routes.py\nfrom fastapi import APIRouter, Depends, HTTPException\nfrom fastapi.security import OAuth2PasswordBearer\n\nrouter = APIRouter()\noauth2_scheme = OAuth2PasswordBearer(tokenUrl=\"/auth/login\")\n\n@router.post(\"/login\")\ndef login(username: str, password: str):\n    # TODO: look up investigator, verify_password, create_access_token\n    # TODO: write AuditLog row for \"LOGIN\"\n    raise NotImplementedError\n\ndef get_current_investigator(token: str = Depends(oauth2_scheme)):\n    # TODO: decode_access_token, fetch investigator, raise 401 if invalid\n    raise NotImplementedError\n\ndef require_role(allowed_roles: list[str]):\n    def checker(investigator=Depends(get_current_investigator)):\n        # TODO: raise 403 if investigator.role not in allowed_roles\n        return investigator\n    return checker" },
+
+    { title: "Day 4 — Schemas", files: ["veritas/backend/app/schemas/__init__.py (empty)", "veritas/backend/app/schemas/evidence.py"],
+      code: "# app/schemas/evidence.py\nfrom pydantic import BaseModel\nfrom typing import Optional\n\nclass CaseCreate(BaseModel):\n    title: str\n\nclass CaseOut(BaseModel):\n    id: str\n    title: str\n    status: str\n\nclass EvidenceUploadOut(BaseModel):\n    evidence_id: str\n    sha256: str\n    file_type: str\n\nclass ReviewApprovalIn(BaseModel):\n    case_id: str\n    notes: Optional[str] = None" },
+
+    { title: "Day 5 — Case routes + permission test script", files: ["veritas/backend/app/api/__init__.py (empty)", "veritas/backend/app/api/routes_case.py", "veritas/backend/tests/test_permissions.py"],
+      code: "# app/api/routes_case.py\nfrom fastapi import APIRouter, Depends\nfrom app.auth.routes import get_current_investigator, require_role\nfrom app.schemas.evidence import CaseCreate, CaseOut\n\nrouter = APIRouter()\n\n@router.post(\"/\", response_model=CaseOut)\ndef create_case(payload: CaseCreate, investigator=Depends(require_role([\"analyst\",\"supervisor\",\"admin\"]))):\n    # TODO: create Case row, write AuditLog \"CASE_CREATED\"\n    raise NotImplementedError\n\n@router.get(\"/{case_id}\", response_model=CaseOut)\ndef get_case(case_id: str, investigator=Depends(get_current_investigator)):\n    # TODO: fetch case, 404 if missing\n    raise NotImplementedError\n\n\n# tests/test_permissions.py\nimport httpx\n\nBASE_URL = \"http://localhost:8000\"\nROLE_TOKENS = {}  # TODO: populate with real tokens per role after logging in\n\nROUTE_MATRIX = [\n    (\"POST\", \"/cases/\", [\"analyst\", \"supervisor\", \"admin\"]),\n    # TODO: add every route from routes_case.py, routes_evidence.py, routes_graph.py\n]\n\ndef test_permission_matrix():\n    for method, path, allowed in ROUTE_MATRIX:\n        for role, token in ROLE_TOKENS.items():\n            # TODO: httpx.request(...), assert 2xx if role in allowed else 403\n            pass" }
+  ],
+  checkpoint: "Auth end to end works: login → token → role-gated route. Permission test script exists with real structure."
+},
+
+{
+  title: "Week 3 — Pipeline Skeleton + Agents 1–3",
+  goal: "The LangGraph shell exists, and the first three agents have real signatures.",
+  days: [
+    { title: "Day 1 — Pipeline state + orchestrator shell", files: ["veritas/backend/app/agents/__init__.py (empty)", "veritas/backend/app/agents/state.py", "veritas/backend/app/agents/orchestrator.py"],
+      code: "# app/agents/state.py\nfrom typing import TypedDict, Optional, List\n\nclass PipelineState(TypedDict, total=False):\n    case_id: str\n    evidence_path: str\n    sha256: str\n    file_type: str\n    metadata: dict\n    synthetic_verdict: Optional[str]      # \"real\" | \"synthetic\" | \"abstain\"\n    synthetic_confidence: Optional[float]\n    requires_human_review: bool\n    correlations: List[dict]\n    patterns: List[dict]\n    timeline: List[dict]\n    risk_score: Optional[float]\n    report: Optional[str]\n    status: str  # \"processing\" | \"awaiting_review\" | \"complete\" | \"failed\"\n\n\n# app/agents/orchestrator.py\nfrom langgraph.graph import StateGraph, END\nfrom app.agents.state import PipelineState\n\n# TODO: import each agent function once written\n\ndef build_graph():\n    graph = StateGraph(PipelineState)\n    # TODO: graph.add_node(\"ingestion\", ingestion_node) etc for all 9 agents\n    # TODO: graph.add_edge(...) for the linear sequence\n    # TODO: graph.add_conditional_edges(\"synthetic_detection\", route_on_review,\n    #         {\"awaiting_review\": \"awaiting_review_node\", \"continue\": \"correlation\"})\n    graph.set_entry_point(\"ingestion\")\n    return graph.compile()\n\npipeline = None  # TODO: pipeline = build_graph() once nodes exist" },
+
+    { title: "Day 2 — Ingestion agent", files: ["veritas/backend/app/agents/ingestion_agent.py"],
+      code: "# app/agents/ingestion_agent.py\nimport hashlib\nfrom app.agents.state import PipelineState\n\ndef ingestion_node(state: PipelineState) -> PipelineState:\n    # TODO: read file at state[\"evidence_path\"]\n    # TODO: sha256 = hashlib.sha256(file_bytes).hexdigest()  -- FIRST, chain-of-custody anchor\n    # TODO: detect file_type (mimetype)\n    # TODO: on failure -> write AuditLog \"INGESTION_FAILED\", set state[\"status\"]=\"failed\"\n    raise NotImplementedError" },
+
+    { title: "Day 3 — Metadata agent", files: ["veritas/backend/app/agents/metadata_agent.py"],
+      code: "# app/agents/metadata_agent.py\nfrom app.agents.state import PipelineState\n\ndef metadata_node(state: PipelineState) -> PipelineState:\n    file_type = state.get(\"file_type\", \"\")\n    if file_type.startswith(\"image\"):\n        pass  # TODO: EXIF/GPS/timestamp extraction (PIL.ExifTags)\n    elif file_type.startswith(\"video\"):\n        pass  # TODO: Week 6 — pymediainfo/ffmpeg branch, stub for now\n    else:\n        pass  # TODO: unsupported type handling\n    raise NotImplementedError" },
+
+    { title: "Day 4 — Synthetic detector (stage 1 shell)", files: ["veritas/backend/app/ml/__init__.py (empty)", "veritas/backend/app/ml/synthetic_detector.py"],
+      code: "# app/ml/synthetic_detector.py\nimport timm\nimport torch\nfrom app.config import settings\n\nclass SyntheticDetector:\n    def __init__(self):\n        self.model = timm.create_model(\"efficientnet_b4\", pretrained=False, num_classes=2)\n        # TODO: load state dict from settings.synthetic_detector_model_path\n        self.model.eval()\n\n    def _stage1_classify(self, image) -> tuple[str, float]:\n        # TODO: preprocess image, run through self.model, softmax -> (verdict, confidence)\n        raise NotImplementedError\n\n    def _stage2_adversarial_check(self, image, stage1_confidence: float) -> bool:\n        # TODO: Week 6 — transform-consistency check\n        raise NotImplementedError\n\n    def predict(self, image_path: str) -> dict:\n        # TODO: orchestrate stage1 -> stage2 -> {\"verdict\":..., \"confidence\":..., \"abstain\": bool}\n        raise NotImplementedError" },
+
+    { title: "Day 5 — Synthetic detection agent", files: ["veritas/backend/app/agents/synthetic_detection_agent.py"],
+      code: "# app/agents/synthetic_detection_agent.py\nfrom app.agents.state import PipelineState\nfrom app.ml.synthetic_detector import SyntheticDetector\n\ndetector = SyntheticDetector()\n\ndef synthetic_detection_node(state: PipelineState) -> PipelineState:\n    # TODO: only run on image/video file types\n    # TODO: result = detector.predict(state[\"evidence_path\"])\n    # TODO: state[\"synthetic_verdict\"], state[\"synthetic_confidence\"] = ...\n    # TODO: if result[\"abstain\"]: state[\"requires_human_review\"] = True\n    raise NotImplementedError" }
+  ],
+  checkpoint: "All 5 files exist and import cleanly (NotImplementedError bodies are fine). orchestrator.py's graph structure is sketched."
+},
+
+{
+  title: "Week 4 — Neo4j Client + Agents 4–7",
+  goal: "Correlation, pattern, timeline, and risk agents all have real signatures against PipelineState.",
+  days: [
+    { title: "Day 1 — Neo4j client", files: ["veritas/backend/app/db/neo4j_client.py"],
+      code: "# app/db/neo4j_client.py\nfrom neo4j import GraphDatabase\nfrom app.config import settings\n\nclass Neo4jClient:\n    def __init__(self):\n        self.driver = GraphDatabase.driver(\"bolt://neo4j:7687\", auth=(\"neo4j\", settings.neo4j_password))\n\n    def upsert_media_file(self, case_id: str, sha256: str, metadata: dict):\n        # TODO: MERGE (:MediaFile {sha256: $sha256}) SET properties, link to Case\n        raise NotImplementedError\n\n    def link_related(self, sha256_a: str, sha256_b: str, reason: str):\n        # TODO: MERGE relationship between two MediaFile nodes\n        raise NotImplementedError\n\n    def query_subgraph(self, case_id: str) -> dict:\n        # TODO: return nodes/edges for a case, shaped for Cytoscape.js\n        raise NotImplementedError\n\nneo4j_client = Neo4jClient()" },
+
+    { title: "Day 2 — Correlation agent", files: ["veritas/backend/app/agents/correlation_agent.py"],
+      code: "# app/agents/correlation_agent.py\nfrom app.agents.state import PipelineState\nfrom app.db.neo4j_client import neo4j_client\n\ndef correlation_node(state: PipelineState) -> PipelineState:\n    # TODO: neo4j_client.upsert_media_file(...)\n    # TODO: find other MediaFile nodes sharing device/location/time window, link_related(...)\n    raise NotImplementedError" },
+
+    { title: "Day 3 — Pattern analysis agent", files: ["veritas/backend/app/agents/pattern_analysis_agent.py"],
+      code: "# app/agents/pattern_analysis_agent.py\nfrom app.agents.state import PipelineState\n\ndef pattern_analysis_node(state: PipelineState) -> PipelineState:\n    # TODO: query Neo4j for graph-level patterns (e.g. shared-device clusters)\n    # TODO: state[\"patterns\"] = [...]\n    raise NotImplementedError" },
+
+    { title: "Day 4 — Timeline agent", files: ["veritas/backend/app/agents/timeline_agent.py"],
+      code: "# app/agents/timeline_agent.py\nfrom app.agents.state import PipelineState\n\ndef timeline_node(state: PipelineState) -> PipelineState:\n    # TODO: order state[\"metadata\"] timestamps chronologically\n    # TODO: flag anomalies (impossible ordering, missing timestamps)\n    raise NotImplementedError" },
+
+    { title: "Day 5 — Risk scoring agent", files: ["veritas/backend/app/agents/risk_scoring_agent.py"],
+      code: "# app/agents/risk_scoring_agent.py\nfrom app.agents.state import PipelineState\n\ndef risk_scoring_node(state: PipelineState) -> PipelineState:\n    # TODO: weighted function of synthetic_confidence, patterns, timeline anomalies\n    # TODO: low confidence -> requires_human_review = True instead of forcing a score\n    raise NotImplementedError" }
+  ],
+  checkpoint: "neo4j_client.py and 4 agent files exist with real method/function signatures matching PipelineState fields."
+},
+
+{
+  title: "Week 5 — LLM Client + Agents 8–9 + Remaining Routes",
+  goal: "Every agent in the pipeline and every API route now exists in skeleton form.",
+  days: [
+    { title: "Day 1 — LLM client", files: ["veritas/backend/app/ml/llm_client.py"],
+      code: "# app/ml/llm_client.py\nimport requests\nfrom app.config import settings\n\nclass OllamaClient:\n    def __init__(self):\n        self.host = settings.ollama_host\n\n    def generate(self, prompt: str) -> str:\n        # TODO: POST to {self.host}/api/generate with model=\"qwen2.5:7b\"\n        raise NotImplementedError\n\n    def generate_with_trace(self, prompt: str) -> dict:\n        # TODO: return {\"answer\": ..., \"reasoning_trace\": [...]} -- explainability core\n        raise NotImplementedError\n\nllm_client = OllamaClient()" },
+
+    { title: "Day 2–3 — Report generation agent", files: ["veritas/backend/app/agents/report_generation_agent.py"],
+      code: "# app/agents/report_generation_agent.py\nfrom app.agents.state import PipelineState\nfrom app.ml.llm_client import llm_client\n\ndef report_generation_node(state: PipelineState) -> PipelineState:\n    # TODO: build prompt from full pipeline state\n    # TODO: result = llm_client.generate_with_trace(prompt)\n    # TODO: prefix report with \"DRAFT — PENDING REVIEW\" if state[\"requires_human_review\"]\n    raise NotImplementedError" },
+
+    { title: "Day 4 — Retrieval agent", files: ["veritas/backend/app/agents/retrieval_agent.py"],
+      code: "# app/agents/retrieval_agent.py\nfrom app.db.neo4j_client import neo4j_client\nfrom app.ml.llm_client import llm_client\n\ndef answer_question(case_id: str, question: str) -> str:\n    # TODO: pull relevant subgraph/context for case_id\n    # TODO: prompt the LLM grounded ONLY in that context\n    # TODO: if context doesn't cover the question, say so rather than guessing\n    raise NotImplementedError" },
+
+    { title: "Day 5 — Evidence + graph routes", files: ["veritas/backend/app/api/routes_evidence.py", "veritas/backend/app/api/routes_graph.py"],
+      code: "# app/api/routes_evidence.py\nfrom fastapi import APIRouter, Depends\nfrom app.auth.routes import get_current_investigator, require_role\nfrom app.tasks.celery_tasks import run_pipeline_task\n\nrouter = APIRouter()\n\n@router.post(\"/run\")\ndef run_evidence(case_id: str, file_path: str, investigator=Depends(get_current_investigator)):\n    # TODO: run_pipeline_task.delay(case_id, file_path), return task id\n    raise NotImplementedError\n\n@router.get(\"/status/{task_id}\")\ndef get_status(task_id: str, investigator=Depends(get_current_investigator)):\n    # TODO: check celery AsyncResult(task_id) state\n    raise NotImplementedError\n\n@router.post(\"/approve-review/{case_id}\")\ndef approve_review(case_id: str, investigator=Depends(require_role([\"supervisor\",\"admin\"]))):\n    # TODO: finalize case, write AuditLog \"REVIEW_APPROVED\"\n    raise NotImplementedError\n\n\n# app/api/routes_graph.py\nfrom fastapi import APIRouter, Depends\nfrom app.auth.routes import get_current_investigator\nfrom app.db.neo4j_client import neo4j_client\nfrom app.agents.retrieval_agent import answer_question\n\nrouter = APIRouter()\n\n@router.get(\"/subgraph/{case_id}\")\ndef get_subgraph(case_id: str, investigator=Depends(get_current_investigator)):\n    # TODO: return neo4j_client.query_subgraph(case_id)\n    raise NotImplementedError\n\n@router.post(\"/ask/{case_id}\")\ndef ask(case_id: str, question: str, investigator=Depends(get_current_investigator)):\n    # TODO: return answer_question(case_id, question)\n    raise NotImplementedError" }
+  ],
+  checkpoint: "All 9 agent files and all 4 route files exist with matching signatures. orchestrator.py can import every node function."
+},
+
+{
+  title: "Week 6 — Fill In the Two Genuinely Open Items",
+  goal: "Real logic, not skeletons — this is actual ML/research work.",
+  days: [
+    { title: "Day 1–3 — _stage2_adversarial_check()", files: ["Edit: veritas/backend/app/ml/synthetic_detector.py"],
+      code: "# fleshing out _stage2_adversarial_check — structure to build against\ndef _stage2_adversarial_check(self, image, stage1_confidence: float) -> bool:\n    transforms_to_try = [\n        # TODO: jpeg_recompress(image, quality=70)\n        # TODO: gaussian_blur(image, radius=2)\n        # TODO: add_noise(image, sigma=0.05)\n    ]\n    confidence_deltas = []\n    for transformed in transforms_to_try:\n        # TODO: _, new_confidence = self._stage1_classify(transformed)\n        # TODO: confidence_deltas.append(abs(stage1_confidence - new_confidence))\n        pass\n    # TODO: large average delta -> likely adversarially perturbed -> return True\n    raise NotImplementedError" },
+
+    { title: "Day 4–5 — Video metadata branch", files: ["Edit: veritas/backend/app/agents/metadata_agent.py"],
+      code: "# fleshing out the video branch\nfrom pymediainfo import MediaInfo\n\ndef _extract_video_metadata(path: str) -> dict:\n    # TODO: MediaInfo.parse(path), pull codec, duration, creation timestamp\n    raise NotImplementedError" }
+  ],
+  checkpoint: "Both methods have real (not stubbed) logic, tested against manually perturbed/sample files."
+},
+
+{
+  title: "Week 7 — Model Weights, Frontend, Backup Proof",
+  goal: "Turn placeholder detection into a real signal, and prove data survives disaster.",
+  days: [
+    { title: "Day 1–3 — Training script", files: ["veritas/backend/scripts/train_synthetic_detector.py"],
+      code: "# scripts/train_synthetic_detector.py\nimport timm, torch\nfrom torch.utils.data import DataLoader\n\ndef build_model():\n    return timm.create_model(\"efficientnet_b4\", pretrained=True, num_classes=2)\n\ndef train(dataset_path: str, epochs: int = 10):\n    # TODO: dataset loading (real vs AI-generated images, public research datasets only)\n    # TODO: training loop, save checkpoint to SYNTHETIC_DETECTOR_MODEL_PATH\n    raise NotImplementedError\n\nif __name__ == \"__main__\":\n    train(dataset_path=\"./data/training_set\")" },
+
+    { title: "Day 4 — Frontend graph view", files: ["veritas/frontend/index.html", "veritas/frontend/graph.js"],
+      code: "<!-- frontend/index.html -->\n<!DOCTYPE html>\n<html>\n<head><script src=\"https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js\"><\/script></head>\n<body>\n  <div id=\"cy\" style=\"width:100%;height:100vh;\"></div>\n  <script src=\"graph.js\"><\/script>\n</body>\n</html>\n\n// frontend/graph.js\n// TODO: fetch(`/graph/subgraph/${caseId}`) with auth header\n// TODO: cytoscape({ container: document.getElementById('cy'), elements: [...], style: [...] })\n// TODO: style node color by type (person / evidence / case)" },
+
+    { title: "Day 5 — Restore script", files: ["veritas/backend/scripts/restore_neo4j.sh"],
+      code: "#!/bin/bash\n# backend/scripts/restore_neo4j.sh\nset -e\nDUMP_FILE=$1\n# TODO: neo4j-admin load command targeting $DUMP_FILE\necho \"TODO: implement restore, then verify against a known query\"" }
+  ],
+  checkpoint: "Real checkpoint loads, real verdicts. Frontend renders a graph. You've deleted and restored Neo4j data successfully."
+},
+
+{
+  title: "Week 8 — Test Suite + Demo Prep",
+  goal: "Prove it, then pitch it.",
+  days: [
+    { title: "Day 1–2 — Pipeline tests", files: ["veritas/backend/tests/conftest.py", "veritas/backend/tests/test_pipeline.py"],
+      code: "# tests/conftest.py\nimport pytest\n# TODO: fixtures for test DB session, test evidence files (clean/synthetic/ambiguous/corrupted)\n\n\n# tests/test_pipeline.py\ndef test_clean_case_completes():\n    raise NotImplementedError\n\ndef test_synthetic_case_flags_review():\n    raise NotImplementedError\n\ndef test_corrupted_file_fails_gracefully():\n    raise NotImplementedError" },
+
+    { title: "Day 3–5 — No new files", files: ["Demo scenario selection + timing", "Adversarial Q&A written answers", "Full dry run with a test audience"],
+      code: null }
+  ],
+  checkpoint: "Test suite runs (structure real, assertions filled in by you). Full dry run done."
+}
+];
+
+const STORAGE_KEY = "veritas_scratch_checklist_v1";
+
+function loadState(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveState(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function escapeHtml(str){
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+let state = loadState();
+
+function renderDay(day, wIdx, dIdx){
+  let filesHtml = "";
+  day.files.forEach((f, fIdx) => {
+    const id = `w${wIdx}d${dIdx}f${fIdx}`;
+    const checked = !!state[id];
+    filesHtml += `<li class="file">
+      <label class="file-row">
+        <input type="checkbox" data-id="${id}">
+        <span class="file-path ${checked ? "done" : ""}" data-textfor="${id}">${f}</span>
+      </label>
+    </li>`;
+  });
+
+  let skeletonHtml = "";
+  if(day.code){
+    skeletonHtml = `<details class="skeleton">
+      <summary>▸ show skeleton</summary>
+      <pre>${escapeHtml(day.code)}</pre>
+    </details>`;
+  }
+
+  return `<div class="day">
+    <div class="day-title">${day.title}</div>
+    <ul class="filelist">${filesHtml}</ul>
+    ${skeletonHtml}
+  </div>`;
+}
+
+function renderWeek(week, wIdx){
+  let daysHtml = "";
+  week.days.forEach((day, dIdx) => { daysHtml += renderDay(day, wIdx, dIdx); });
+
+  return `<div class="week" data-week="${wIdx}">
+    <div class="week-header" data-toggle="${wIdx}">
+      <span class="tab-num">${String(wIdx+1).padStart(2,'0')}</span>
+      <span class="tab-title">${week.title}<span class="tab-goal">${week.goal}</span></span>
+      <span class="tab-progress" id="wprog-${wIdx}">0/0</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="week-body">
+      ${daysHtml}
+      <div class="checkpoint"><b>CHECKPOINT —</b> ${week.checkpoint}</div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  const container = document.getElementById('weeksContainer');
+  container.innerHTML = DATA.map((w,i) => renderWeek(w,i)).join("");
+
+  container.querySelectorAll('.week-header').forEach(h => {
+    h.addEventListener('click', () => { h.parentElement.classList.toggle('open'); });
+  });
+
+  container.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    const id = cb.getAttribute('data-id');
+    cb.checked = !!state[id];
+    cb.addEventListener('change', () => {
+      state[id] = cb.checked;
+      saveState(state);
+      const textEl = container.querySelector(`[data-textfor="${id}"]`);
+      if(textEl) textEl.classList.toggle('done', cb.checked);
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+  let openTarget = 0;
+  for(let i=0;i<DATA.length;i++){
+    const el = container.querySelector(`.week[data-week="${i}"]`);
+    const boxes = el.querySelectorAll('input[type=checkbox]');
+    const done = [...boxes].filter(b=>b.checked).length;
+    if(done < boxes.length){ openTarget = i; break; }
+    openTarget = i;
+  }
+  container.querySelectorAll('.week')[openTarget].classList.add('open');
+}
+
+function updateProgress(){
+  const container = document.getElementById('weeksContainer');
+  let totalAll = 0, doneAll = 0;
+  DATA.forEach((w,i) => {
+    const el = container.querySelector(`.week[data-week="${i}"]`);
+    const boxes = el.querySelectorAll('input[type=checkbox]');
+    const done = [...boxes].filter(b=>b.checked).length;
+    totalAll += boxes.length; doneAll += done;
+    const prog = document.getElementById(`wprog-${i}`);
+    if(prog) prog.textContent = `${done}/${boxes.length}`;
+  });
+  const pct = totalAll ? Math.round((doneAll/totalAll)*100) : 0;
+  document.getElementById('overallFill').style.width = pct + "%";
+  document.getElementById('overallText').textContent = `${doneAll} / ${totalAll} files created`;
+  document.getElementById('overallPct').textContent = pct + "%";
+  const stamp = document.getElementById('stamp');
+  if(pct >= 100){ stamp.textContent = "CASE CLOSED"; stamp.classList.add('closed'); }
+  else { stamp.textContent = "IN PROGRESS"; stamp.classList.remove('closed'); }
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(confirm("Clear all checkmarks? This can't be undone.")){
+    state = {}; saveState(state); render();
+  }
+});
+
+render();
+</script>
+
+</body>
+</html>

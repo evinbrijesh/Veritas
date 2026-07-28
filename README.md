@@ -43,24 +43,24 @@ Investigator (browser)
 cp .env.example .env
 # edit .env: set NEO4J_PASSWORD, POSTGRES_PASSWORD, JWT_SECRET_KEY
 
-docker-compose up -d
+docker compose up -d
 
 # first run only — pull the local LLM weights into the ollama volume
 docker exec -it veritas-ollama ollama pull qwen2.5:7b
 
 # API docs available at:
-open http://localhost:8000/docs
+# http://localhost:8000/docs
 
 # Neo4j browser (inspect the knowledge graph directly):
-open http://localhost:7474
+# http://localhost:7474
 
 # Celery task monitor:
-open http://localhost:5555
+# http://localhost:5555
 ```
 
 All state — Neo4j graph, Postgres tables, Redis queue, Ollama weights,
 raw evidence files — persists under `./data/` via bind-mounted Docker
-volumes. `docker-compose down` (without `-v`) is always safe.
+volumes. `docker compose down` (without `-v`) is always safe.
 
 ## Scaling
 
@@ -68,7 +68,7 @@ Evidence-heavy days (e.g. a large raid) need more parallel processing,
 not a bigger API server:
 
 ```bash
-docker-compose up -d --scale worker=6
+docker compose up -d --scale worker=6
 ```
 
 ## Backups

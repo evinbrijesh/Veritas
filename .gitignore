@@ -44,3 +44,6 @@ Thumbs.db
 
 # Docker (local overrides — never commit real overrides)
 docker-compose.override.yml
+
+# Neo4j backup dumps
+*.dump

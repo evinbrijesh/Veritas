@@ -1,8 +1,6 @@
-version: "3.9"
-
 # VERITAS - Verified Evidence Reasoning & Intelligence Triage Agentic System
 # Fully local / air-gapped-capable stack. All data persists via bind-mounted
-# volumes under ./data — safe across `docker-compose down` and restarts.
+# volumes under ./data — safe across `docker compose down` and restarts.
 
 services:
 
@@ -80,7 +78,7 @@ services:
       - "11434:11434"
     volumes:
       - ./data/ollama:/root/.ollama
-    # NOTE: after first `docker-compose up`, run:
+    # NOTE: after first `docker compose up`, run:
     #   docker exec -it veritas-ollama ollama pull qwen2.5:7b
     deploy:
       resources:
@@ -139,7 +137,7 @@ services:
       - redis
       - neo4j
     # Scale this at deploy time based on evidence volume, e.g.:
-    #   docker-compose up --scale worker=4
+    #   docker compose up --scale worker=4
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2
 
   # ---------------------------------------------------------------------
