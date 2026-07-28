@@ -91,8 +91,8 @@ SYNTHETIC_DETECTOR_MODEL_PATH=/models/efficientnet_b4_synthetic.pt
 
 ### Day 2 — Backend build files
 **Create:**
-- [ ] `veritas/backend/Dockerfile`
-- [ ] `veritas/backend/requirements.txt`
+- [x] `veritas/backend/Dockerfile`
+- [x] `veritas/backend/requirements.txt`
 
 ```dockerfile
 # backend/Dockerfile
