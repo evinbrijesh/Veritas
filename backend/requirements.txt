@@ -7,6 +7,7 @@ pydantic-settings    # reads .env file into typed config objects
 # --- Task queue ---
 celery               # runs the 9-agent pipeline as background tasks
 redis                # connects to Redis (Celery's message broker)
+flower               # web dashboard to monitor Celery tasks (localhost:5555)
 
 # --- Orchestration ---
 langgraph            # LangGraph — wires the 9 agents into a state graph

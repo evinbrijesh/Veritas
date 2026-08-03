@@ -187,9 +187,9 @@ def health():
 
 ### Day 4 — Celery wiring
 **Create:**
-- [ ] `veritas/backend/app/celery_app.py`
-- [ ] `veritas/backend/app/tasks/__init__.py` (empty)
-- [ ] `veritas/backend/app/tasks/celery_tasks.py`
+- [x] `veritas/backend/app/celery_app.py`
+- [x] `veritas/backend/app/tasks/__init__.py` (empty)
+- [x] `veritas/backend/app/tasks/celery_tasks.py`
 
 ```python
 # app/celery_app.py

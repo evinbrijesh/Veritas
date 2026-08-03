@@ -149,7 +149,10 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      NEO4J_URI: bolt://neo4j:7687
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://veritas:${POSTGRES_PASSWORD:-changeme_in_env}@postgres:5432/veritas
+      OLLAMA_HOST: http://ollama:11434
     ports:
       - "5555:5555"
     depends_on:
