@@ -27,7 +27,7 @@ Investigator (browser)
         │           │ 5. Pattern analysis            │
         │           │ 6. Timeline construction        │
         │           │ 7. Risk scoring                  │
-        │           │ 8. Report generation              │──► Ollama (Qwen2.5 7B)
+        │           │ 8. Report generation              │──► Ollama (host, qwen3.5)
         │           │ 9. Retrieval (on-demand Q&A)        │
         │           └─────────────────────────────┘
         │
@@ -41,12 +41,13 @@ Investigator (browser)
 
 ```bash
 cp .env.example .env
-# edit .env: set NEO4J_PASSWORD, POSTGRES_PASSWORD, JWT_SECRET_KEY
+# edit .env: set NEO4J_PASSWORD, POSTGRES_PASSWORD, JWT_SECRET_KEY, LLM_MODEL_NAME
 
 docker compose up -d
 
-# first run only — pull the local LLM weights into the ollama volume
-docker exec -it veritas-ollama ollama pull qwen2.5:7b
+# LLM: this deployment uses a HOST ollama (not a container) — see
+# "LLM runtime" below. Ensure the model named in LLM_MODEL_NAME is
+# already pulled on the host:  ollama pull <LLM_MODEL_NAME>
 
 # API docs available at:
 # http://localhost:8000/docs
@@ -58,9 +59,17 @@ docker exec -it veritas-ollama ollama pull qwen2.5:7b
 # http://localhost:5555
 ```
 
-All state — Neo4j graph, Postgres tables, Redis queue, Ollama weights,
-raw evidence files — persists under `./data/` via bind-mounted Docker
-volumes. `docker compose down` (without `-v`) is always safe.
+All state — Neo4j graph, Postgres tables, Redis queue, raw evidence
+files — persists under `./data/` via bind-mounted Docker volumes.
+`docker compose down` (without `-v`) is always safe.
+
+## LLM runtime
+
+VERITAS talks to a **host-installed Ollama** at `host.docker.internal:11434`
+(see `OLLAMA_HOST` in docker-compose.yml), not an in-compose container.
+This lets the deployment reuse models already present on the machine —
+no model downloads into Docker. The model named by `LLM_MODEL_NAME` in
+`.env` must exist on the host (`ollama list`).
 
 ## Scaling
 
@@ -82,8 +91,9 @@ recoverable, timestamped dump under `./data/backups/`.
 - This scaffold's CORS, JWT secret, and DB passwords are dev defaults —
   replace all of them before anything resembling real evidence touches it.
 - Intended to run fully air-gapped: no component in `docker-compose.yml`
-  calls out to the public internet at runtime (Ollama model pull is the
-  one one-time exception, done during setup).
+  calls out to the public internet at runtime. The LLM is a host-installed
+  Ollama (see "LLM runtime" above) — model downloads happen on the host,
+  once, during setup.
 - Every sensitive action (login, pipeline run, review approval) writes
   an `AuditLog` row in Postgres — don't delete from that table.
 - The synthetic-detection model weights (`SYNTHETIC_DETECTOR_MODEL_PATH`)

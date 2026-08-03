@@ -68,28 +68,6 @@ services:
       retries: 10
 
   # ---------------------------------------------------------------------
-  # Local LLM runtime — Qwen2.5 7B, fully offline reasoning
-  # ---------------------------------------------------------------------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: veritas-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ./data/ollama:/root/.ollama
-    # NOTE: after first `docker compose up`, run:
-    #   docker exec -it veritas-ollama ollama pull qwen2.5:7b
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-      # ^ remove this `deploy` block entirely if no GPU is available on host
-
-  # ---------------------------------------------------------------------
   # FastAPI application — API layer + LangGraph orchestration entrypoint
   # ---------------------------------------------------------------------
   api:
@@ -101,7 +79,9 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql://veritas:${POSTGRES_PASSWORD:-changeme_in_env}@postgres:5432/veritas
-      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_HOST: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     volumes:
@@ -128,7 +108,9 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql://veritas:${POSTGRES_PASSWORD:-changeme_in_env}@postgres:5432/veritas
-      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_HOST: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data/evidence_storage:/app/evidence_storage
       - ./backend/app:/app/app
@@ -152,7 +134,9 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql://veritas:${POSTGRES_PASSWORD:-changeme_in_env}@postgres:5432/veritas
-      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_HOST: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "5555:5555"
     depends_on:

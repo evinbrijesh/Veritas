@@ -222,9 +222,9 @@ def run_pipeline_task(self, case_id: str, evidence_path: str):
 
 ### Day 5 — DB session + backup script
 **Create:**
-- [ ] `veritas/backend/app/db/__init__.py` (empty)
-- [ ] `veritas/backend/app/db/session.py`
-- [ ] `veritas/backend/scripts/backup_neo4j.sh`
+- [x] `veritas/backend/app/db/__init__.py` (empty)
+- [x] `veritas/backend/app/db/session.py`
+- [x] `veritas/backend/scripts/backup_neo4j.sh`
 
 ```python
 # app/db/session.py
