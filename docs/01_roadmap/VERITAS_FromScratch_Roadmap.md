@@ -136,9 +136,9 @@ httpx
 
 ### Day 3 — App entrypoint + config
 **Create:**
-- [ ] `veritas/backend/app/__init__.py` (empty)
-- [ ] `veritas/backend/app/config.py`
-- [ ] `veritas/backend/app/main.py`
+- [x] `veritas/backend/app/__init__.py` (empty)
+- [x] `veritas/backend/app/config.py`
+- [x] `veritas/backend/app/main.py`
 
 ```python
 # app/config.py
